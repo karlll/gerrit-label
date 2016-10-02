@@ -1,0 +1,11 @@
+
+{
+  "endpoint": "https://gerrit-review.googlesource.com/changes/",
+  "labelMap": {
+    "git-repo": {
+      "python": [".*\\.py"],
+      "commit-message": ["COMMIT_MSG"]
+    }
+  }
+
+}
