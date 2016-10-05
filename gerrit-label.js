@@ -7,11 +7,16 @@ const DIVIDER = ")]}'\n";
 /**
  * Get all changes
  * @param {String} endpoint the REST endpoint to get changes from
+ * @param {Object} auth authentication object (should have keys 'password' and 'user')
+ * @param {String} query query string (see Gerrit API documentation)
  * @return {*|promise} The changes
  */
-function getAllChanges(endpoint) {
+function getAllChanges(endpoint, auth, query) {
   let deferred = q.defer();
-  req(endpoint, (err, response, data) => {
+  if (query) {
+    endpoint = endpoint + "?q=" + query;
+  }
+  req(endpoint, getAuth(auth), (err, response, data) => {
     if (!err && _.startsWith(data, DIVIDER)) {
       deferred.resolve(JSON.parse(data.substring(DIVIDER.length)));
     } else {
@@ -19,6 +24,24 @@ function getAllChanges(endpoint) {
     }
   });
   return deferred.promise;
+}
+
+/**
+ * Get authentication object
+ * @param {object} auth object contatining user and password
+ * @return {*} authentication object (empty if no auth==undefined)
+ */
+function getAuth(auth) {
+  if (auth) {
+    return {
+      auth: {
+        user: auth.user,
+        pass: auth.password,
+        sendImmediately: false
+      }
+    };
+  }
+  return {};
 }
 /**
  * Filter changes based on projects
@@ -35,14 +58,15 @@ function filterProjects(changes, projectList) {
 /**
  * Get files for a given change and revision
  * @param {String} endpoint the REST endpoint to get changes from
+ * @param {Object} auth authentication object (should have keys 'password' and 'user')
  * @param {String} changeId the change id
  * @param {String} revisionId The revision (defaults to 'current')
  * @return {*|promise} The files
  */
-function getFiles(endpoint, changeId, revisionId = "current") {
+function getFiles(endpoint, auth, changeId, revisionId = "current") {
   let endp = `${endpoint}/${changeId}/revisions/${revisionId}/files/`;
   let deferred = q.defer();
-  req(endp, (err, response, data) => {
+  req(endp, getAuth(auth), (err, response, data) => {
     if (!err && _.startsWith(data, DIVIDER)) {
       deferred.resolve(JSON.parse(data.substring(DIVIDER.length)));
     } else {
@@ -55,11 +79,13 @@ function getFiles(endpoint, changeId, revisionId = "current") {
  * Get changes and files
  * @param {Array} projectFilter list of project names
  * @param {String} endpoint the REST endpoint to get changes from
+ * @param {Object} auth authentication object (should have keys 'password' and 'user')
+ * @param {String} query query string (see Gerrit API documentation)
  * @return {*|promise} the changes and files
  */
-function getChangesAndFiles(projectFilter, endpoint) {
+function getChangesAndFiles(projectFilter, endpoint, auth, query) {
   let deferred = q.defer();
-  getAllChanges(endpoint).then(
+  getAllChanges(endpoint, auth, query).then(
     data => {
       try {
         let filteredChanges = filterProjects(data, projectFilter);
@@ -68,7 +94,7 @@ function getChangesAndFiles(projectFilter, endpoint) {
         let fileReqs = [];
 
         _.forEach(filteredChanges, change => {
-          fileReqs.push(getFiles(endpoint, change.id).then(
+          fileReqs.push(getFiles(endpoint, auth, change.id).then(
             fileList => {
               files[change.id] = fileList;
             })
@@ -95,7 +121,7 @@ function getChangesAndFiles(projectFilter, endpoint) {
 
 /**
  * Add labels to changes based on provided mapping
- * @param {array} changes the changes to which the labels should be added
+ * @param {Array} changes the changes to which the labels should be added
  * @param {object} labelMap the label map
  * @return {object} the changes with added labels
  */
@@ -111,7 +137,7 @@ function addLabels(changes, labelMap) {
  * Get labels for changes
  * @param {object} change the change to get the labels for
  * @param {object} labelMap the label map
- * @return {array} the labels
+ * @return {Array} the labels
  */
 function getLabels(change, labelMap) {
   let labelSet = new Set();
@@ -158,13 +184,15 @@ function getLabels(change, labelMap) {
  * Get labeled changes
  * @param {object} config configuration containing the REST endpoint for getting changes, and the label map.
  * @param {processChange} callback this function will be invoked with each change
+ * @param {object} auth authentication object (should have keys 'password' and 'user')
  *
  */
-function getChanges(config, callback) {
-  getChangesAndFiles(_.keys(config.labelMap), config.endpoint).then(cf => {
-    let changes = addLabels(cf, config.labelMap);
-    _.forEach(changes, change => callback(change));
-  });
+function getChanges(config, callback, auth) {
+  getChangesAndFiles(_.keys(config.labelMap), config.endpoint, auth, config.queryString)
+    .then(cf => {
+      let changes = addLabels(cf, config.labelMap);
+      _.forEach(changes, change => callback(change));
+    });
 }
 
 module.exports = getChanges;

@@ -1,6 +1,7 @@
 
 {
   "endpoint": "https://gerrit-review.googlesource.com/changes/",
+  "queryString": "status:open",
   "labelMap": {
     "git-repo": {
       "python": [".*\\.py"],
