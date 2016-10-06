@@ -63,9 +63,12 @@ function filterProjects(changes, projectList) {
  * @param {String} revisionId The revision (defaults to 'current')
  * @return {*|promise} The files
  */
-function getFiles(endpoint, auth, changeId, revisionId = "current") {
-  let endp = `${endpoint}/${changeId}/revisions/${revisionId}/files/`;
+function getFiles(endpoint, auth, changeId, revisionId) {
   let deferred = q.defer();
+  if (!revisionId) {
+      revisionId = "current";
+  }
+  let endp = `${endpoint}/${changeId}/revisions/${revisionId}/files/`;
   req(endp, getAuth(auth), (err, response, data) => {
     if (!err && _.startsWith(data, DIVIDER)) {
       deferred.resolve(JSON.parse(data.substring(DIVIDER.length)));
