@@ -1,6 +1,6 @@
 {
   "name": "gerrit-label",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Annotate Gerrit changes with labels based on content.",
   "main": "gerrit-label.js",
   "scripts": {
